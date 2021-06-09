@@ -144,15 +144,4 @@ ASC_Frailty_deprivation %>%
 rm(list = ls())
 load(file = "HF_NDL_Satellite1_6.RData")
 
-# commit
-# commit
-# commit
-# commit
-# commit
-# commit
-# commit
-# commit
-# commit
-# commit
-
 
