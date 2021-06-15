@@ -1,0 +1,452 @@
+---
+title: "__NHS Leeds CCG & City Council Satellite Analysis__"
+author: "Frank Wood, Alex Brownrigg, Souheila Fox"
+date: "07 June 2021"
+fontsize: 10pt
+output: 
+  html_document:
+    theme: "cerulean"
+    toc: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#load(file = "HF_NDL_Satellite1_6.RData")
+
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(plotly)
+library(skimr)
+library(DBI)
+library(odbc)
+library(stringr)
+library(forcats)
+library(plotly)
+library(kableExtra)
+library(knitr)
+library(inspectdf)
+library(tidyverse)
+library(tableone)
+
+# themes: journal, united, sandstone, simplex
+
+# tabulate function
+NDL_summ1 <- function(data, x, y){
+  data %>% group_by({{x}}, {{y}}) %>% 
+  summarise(number.patients = sum(number.patients)) 
+#  pivot_wider(., names_from = {{x}}, values_from = "number.patients")
+}
+
+# plotting functions
+NDL_col1 <- function(data, x, y) {
+  data %>% 
+    ggplot(data, mapping = aes(x = .data[[x]], y = number.patients, fill = .data[[y]])) +
+    geom_col(position = "dodge") +
+    scale_fill_viridis_d() +
+    theme_bw() +
+    theme(axis.text = element_text(size = 12),
+          axis.title = element_text(size = 12, face = "bold"),
+          legend.position = "bottom",
+          legend.text = element_text(size = 12),
+          legend.title = element_text(size = 12, face = "bold"),
+          strip.text = element_text(size = 12))
+}
+
+NDL_col2 <- function(data, x, y, z) {
+    p <- ggplot(data, mapping = aes(x = .data[[x]], y = number.patients, fill = .data[[y]])) +
+    geom_col(position = "dodge") +
+    scale_fill_viridis_d() +
+    theme_bw() +
+    theme(axis.text = element_text(size = 12),
+          axis.title.x = element_text(size = 12, face = "bold"),
+          axis.title.y = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(size = 12),
+          legend.title = element_text(size = 12, face = "bold"),
+          strip.text = element_text(size = 12))
+    if (!is.null(z)){
+      p + facet_wrap(~.data[[z]], scales = "free_y")
+    }
+}
+
+
+```
+
+***
+
+# Background and research questions
+
+This descriptive analysis adds to the central analysis of the Leeds Clinically extremely vulnerable (CEV) cohort. Using the Leeds Data Model to link the CEV cohort with their Frailty category and whether they have received support from Leeds City Council Adult Social Care (ASC) services. This descriptive analysis provides further intelligence on the complexity of care need in the CEV cohort.
+
+***
+
+# Cohort
+
+The table below summarises the Leeds Clinical Extremely Vulnerable cohort by Frailty category and whether support was received from adult social care.
+
+```{r coh1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_Frailty_Level <- openxlsx::read.xlsx("Output_SatelliteC_Tables_Leeds3.xlsx", sheet = "ASC_Frailty_Level")
+
+rename(ASC_Frailty_Level, `Frailty category` = Frailty_Level) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>% 
+  pivot_wider(., names_from = "ASC", values_from = "number.patients") %>% 
+  rowwise() %>% 
+  mutate(Total = sum(`ASC support`, `No ASC support`, na.rm = T)) %>% 
+  kable(., align = "l") %>% 
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = T, fixed_thead = T) 
+
+
+```
+
+***
+
+# Data and Linkages
+
+The linked data used for the Central Analyses Outputs 1 to 3 were enhanced with Frailty category and adult social care service use data.
+
+***
+
+# Methods
+
+The CEV cohort used for the central analysis was enhanced with electronic Frailty Index (eFI) category and contact with Adult Social Care^1^.  Frailty category was found by matching the CEV cohort to their pseudonymised GP record to provide a count per person of how many Frailty deficits they had^2^.  Members of the cohort were flagged as. Contact with Adult Social Care was defined as 'supported by Leeds Adult Social Care Services (ASC)' by matching this cohort to pseudonymised records of Adult social care provision from Leeds Adult Social care in the period March 1st 2018 to April 30th 2020.
+
+Due to constraints on capacity no statistical tests were applied to these data.
+
+
+^1^ Where the original Adult Social Care record included a NHS number for pseudonymisation and subsequent linkage.<br>
+^2^ Frailty deficits - the electronic Frailty Index is calculated based on the count of 36 Frailty deficits present in the patient record. See link for further information. 
+
+
+***
+
+# Results
+
+## Summary of findings
+a)	Gender
+The level of Frailty was higher in people who received support from Adult social care compared to those who did not. There is a similar trend for males and females, though less marked for males. 
+
+b)	Age
+Analysis by age of people on the CEV list shows the majority of people who receiving adult social care support are over 70 (n = 2,969/4,084) and of the people in this category the greatest proportion have moderate or severe Frailty (n = 2,208/2,969). In the CEV cohort who had not received Adult Social Care support, the majority of people have a Frailty category of fit or mild (n = 37,562/48,990). The proportion of people with a higher level of frailty increased with age in both groups.
+
+c)	Deprivation
+A greater proportion of people on the Clinical Extremely Vulnerable list and supported by Adult Social Care live in areas of higher deprivation compared to the proportion not supported by Adult Social Care (44% vs 38% in the most deprived Quintile).
+
+The proportion of people with any level of Frailty is higher for people receiving Adult Social Care support irrespective of the deprivation quintile for where they live and a greater proportion of people have a higher level of Frailty.
+
+d)	Reasons for Shielding
+There is greater variation in the reasons for Shielding for people who had a Frailty category of fit and were not supported by Adult social care. In this group, a higher number of people were flagged with Chemotherapy, Haematological cancer, and rare diseases as reasons for shielding.
+
+***
+
+### a) CEV cohort by recorded Frailty level and supported by adult social care and gender.
+
+
+```{r res1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_Frailty_sex <- openxlsx::read.xlsx("Output_SatelliteC_Tables_Leeds3.xlsx", 
+                                       sheet = "ASC_Frailty_sex")
+
+rename(ASC_Frailty_sex, `Frailty category` = Frailty_Level) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>% 
+  pivot_wider(., names_from = "ASC", values_from = "number.patients") %>% 
+  dplyr::filter(sex!= "unknown/other") %>% 
+  rowwise() %>% 
+  mutate(Total = sum(`ASC support`, `No ASC support`, na.rm = T)) %>% 
+  arrange(sex) %>% 
+  select(-sex) %>% 
+  kable(., align = "l") %>%
+  pack_rows("female", 1, 5) %>% 
+  pack_rows("male", 6, 10) %>% 
+#  pack_rows("unknown / other", 11, 15) %>% 
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = T, fixed_thead = T) 
+
+
+```
+There were 15 patients whose sex was unknown / other and were not being supported by adult social care.
+
+### b) CEV cohort by recorded Frailty level, support received form adult social care, and age band
+
+```{r res2, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_Frailty_age_group <- openxlsx::read.xlsx("Output_SatelliteC_Tables_Leeds3.xlsx", 
+                                             sheet = "ASC_Frailty_age_group")
+
+rename(ASC_Frailty_age_group, `Frailty category` = Frailty_Level) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>% 
+  pivot_wider(., names_from = "age_group", values_from = "number.patients") %>%
+  arrange(`Frailty category`) %>% 
+  rowwise() %>% 
+  replace(., .>0 & .<5, NA) %>%
+  mutate(Total = sum(`<30`, `30-49`, `50-69`, `70+`, na.rm = T)) %>%
+  select(-`Frailty category`) %>% 
+  kable(., align = "l") %>% 
+  pack_rows("Fit", 1, 2) %>% 
+  pack_rows("Mild", 3, 4) %>% 
+  pack_rows("Moderate", 5, 6) %>% 
+  pack_rows("Severe", 7, 8) %>% 
+  pack_rows("Unknown", 9, 10) %>% 
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = T) %>% 
+  add_header_above(header = c("Frailty category" = 1, "Age group" = 4, " " = 1)) 
+
+```
+
+***
+
+### c) CEV cohort with known Deprivation quintile and Frailty category, n= 49,929 / 53,074
+
+```{r res3, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_Frailty_deprivation <- openxlsx::read.xlsx("Output_SatelliteC_Tables_Leeds3.xlsx", 
+                                               sheet = "ASC_Frailty_deprivation")
+
+rename(ASC_Frailty_deprivation, `Frailty category` = Frailty_Level) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>% 
+  pivot_wider(., names_from = `Frailty category`, values_from = "number.patients") %>%
+  arrange(deprivation) %>% 
+  rowwise() %>% 
+  mutate(Total = sum(Fit, Mild, Moderate, Severe, Unknown, na.rm = T)) %>%
+  select(-deprivation) %>% 
+  kable(., align = "l") %>% 
+  pack_rows("1", 1, 2) %>% 
+  pack_rows("2", 3, 4) %>% 
+  pack_rows("3", 5, 6) %>% 
+  pack_rows("4", 7, 8) %>% 
+  pack_rows("5", 9, 10) %>% 
+  pack_rows("Unknown", 11, 12) %>% 
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = T) %>% 
+  add_header_above(header = c("Deprivation" = 1, "Age group" = 5, " " = 1)) 
+
+```
+
+### d) CEV Cohort by reason for shielding. 
+
+The same person could have multiple Reasons for Shielding. The table below summarises the count of reasons for shielding by whether the person received Adult Social Care support and Frailty category where known, n = 17,797/22,022
+
+```{r res4, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_Frailty_RfS <- openxlsx::read.xlsx("Output_SatelliteC_Tables_Leeds3.xlsx", 
+                                       sheet = "ASC_Frailty_RfS")
+
+rename(ASC_Frailty_RfS, 
+       `Frailty category` = Frailty_Level,
+       `Reasons for Shielding` = RfS) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support"),
+         `Reasons for Shielding` = if_else(`Reasons for Shielding` %in% c("Flag_ChemoRadiotherapy", 
+                                                                          "Flag_PregnantWithCongenitalHeartDefect", "Flag_Transplant"),
+                                           "Flag_Other", `Reasons for Shielding`)
+  ) %>% 
+  group_by(`Frailty category`, `Reasons for Shielding`, ASC) %>% 
+  summarise(number.patients = sum(number.patients)) %>% 
+  pivot_wider(., names_from = "ASC", values_from = "number.patients") %>%
+  arrange(`Frailty category`) %>% 
+  rowwise() %>% 
+  replace(., .>0 & .<5, NA) %>%
+  mutate(`Total` = sum(`ASC support`, `No ASC support`, na.rm = T)) %>%
+  select(-`Frailty category`) %>% 
+  kable(., align = "l") %>% 
+  pack_rows("Fit", 1, 4) %>% 
+  pack_rows("Mild", 5, 8) %>% 
+  pack_rows("Moderate", 9, 12) %>% 
+  pack_rows("Severe", 13, 16) %>% 
+  pack_rows("Unknown", 17, 20) %>% 
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = T, position = "center") %>% 
+  footnote(number = "'Flag_other' is the sum of flag counts in the follow categories: Flag_ChemoRadiotherapy,
+  Flag_PregnantWithCongenitalHeartDefect, Flag_Transplant") %>% 
+  scroll_box(width = "800px", height = "400px")
+#  add_header_above(header = c(" " = 1, "ASC Support" = 2, " " = 1)) 
+
+```
+***
+
+## Descriptive Analysis 
+
+### a)	Gender
+The level of Frailty was higher in people who received support from Adult social care compared to those who did not. There is a similar trend for males and females, though less marked for males 
+
+
+```{r resp1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_support <- 4084
+no_ASC_support <- 48990
+
+rename(ASC_Frailty_Level, `Frailty category` = Frailty_Level) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support"),
+         pct = if_else(ASC == "ASC support", (number.patients/ASC_support)*100, 
+                       (number.patients/no_ASC_support)*100)
+         ) %>% 
+  ggplot(aes(x = `Frailty category`, y = pct, fill = ASC)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(limits = c(0, 60), breaks = seq(0,60,10)) +
+  scale_fill_viridis_d() +
+  labs(y = "%") +
+  theme_bw() +
+  theme(axis.text = element_text(size = 12),
+        axis.title.x = element_text(size = 12, face = "bold"),
+#        axis.title.y = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12, face = "bold"),
+        strip.text = element_text(size = 12)
+  )
+
+```
+
+
+
+```{r resp2, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+f_ASC_support <- 2588
+f_no_ASC_support <- 26703
+m_ASC_support <- 1496
+m_no_ASC_support <- 22272
+
+rename(ASC_Frailty_sex, `Frailty category` = Frailty_Level) %>% 
+  dplyr::filter(sex != "unknown/other") %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support"),
+         pct = case_when(ASC == "ASC support" & sex == "female" ~ (number.patients/f_ASC_support)*100,
+                         ASC == "ASC support" & sex == "male" ~ (number.patients/m_ASC_support)*100,
+                         ASC == "No ASC support" & sex == "female" ~ (number.patients/f_no_ASC_support)*100,
+                         ASC == "No ASC support" & sex == "male" ~ (number.patients/m_no_ASC_support)*100)
+         ) %>% 
+  ggplot(aes(x = `Frailty category`, y = pct, fill = ASC)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(limits = c(0, 60), breaks = seq(0,60,10)) +
+  scale_fill_viridis_d() +
+  labs(y = "%") +
+  facet_wrap(~sex) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 12),
+        axis.title.x = element_text(size = 12, face = "bold"),
+#        axis.title.y = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12, face = "bold"),
+        strip.text = element_text(size = 12)
+  )
+  
+```
+
+***
+
+### b)	Age
+Analysis of the age band of people on the CEV list shows the majority of people receiving adult social care support are over 70 (n = 2,969/4,084) and of the people in this category the greatest proportion have moderate or severe Frailty (n = 2,208/2,969).
+
+
+```{r resp4, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+
+rename(ASC_Frailty_age_group, `Frailty category` = Frailty_Level, `age band` = age_group) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>% 
+  NDL_col2(., "age band", "Frailty category", "ASC")
+
+```
+
+In the CEV cohort not receiving Adult Social Care support, the majority of people have a Frailty category of Fit or Mild (n = 37,562/48,990). The proportion of people with a higher category of Frailty increases with age.
+
+***
+
+### c)	Deprivation
+A greater proportion of people on the Clinical Extremely Vulnerable list and supported by Adult Social Care live in areas of higher deprivation compared to the proportion not supported by Adult Social Care.
+
+```{r resp5, eval=T, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+ASC_deprivation <- openxlsx::read.xlsx("Output_SatelliteC_Tables_Leeds3.xlsx", sheet = "ASC_deprivation")
+
+deprivation <- 
+  ASC_deprivation %>%
+  group_by(deprivation) %>% 
+  summarise(number.patients = sum(number.patients)) %>% 
+  mutate(ASC = "All")
+
+ASC_deprivation %>%
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>% 
+  bind_rows(., deprivation) %>% 
+  mutate(pct = case_when(ASC == "ASC support" ~ (number.patients/ASC_support)*100,
+                         ASC == "No ASC support" ~ (number.patients/no_ASC_support)*100,
+                         ASC == "All" ~ (number.patients/(ASC_support + no_ASC_support))*100)
+         ) %>% 
+  ggplot(aes(x = ASC, y = pct, fill = ASC)) +
+  geom_col(position = "dodge") +
+  #scale_y_continuous(limits = c(0, 60), breaks = seq(0,60,10)) +
+  scale_fill_viridis_d() +
+  facet_wrap(~deprivation) +  
+  labs(y = "%") +
+  theme_bw() +
+  theme(axis.text = element_text(size = 12),
+        axis.title.x = element_text(size = 12, face = "bold"),
+#        axis.title.y = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 12),
+        legend.title = element_blank(),
+        strip.text = element_text(size = 12)
+  )
+
+```
+
+The proportion of people with any level of Frailty is higher for people receiving Adult Social Care support irrespective of the deprivation quintile for their area of residence and a greater proportion of people have a higher category of Frailty (33-38% vs 5-7% across deprivation quintiles).
+
+```{r resp7, eval=T, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+
+ASC_Frailty_dep_prop <- 
+  left_join(ASC_Frailty_deprivation, ASC_deprivation, by = c("ASC", "deprivation")) %>% 
+#  dplyr::filter(Frailty_Level != "Unknown") %>% 
+  mutate(prop = round((number.patients.x/number.patients.y)*100, digits = 0),
+         ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support"),
+         Frailty_Level = fct_relevel(factor(Frailty_Level), 
+                                     c("Severe", "Moderate", "Mild", "Fit", "Unknown")))
+
+rename(ASC_Frailty_dep_prop, `Frailty category` = Frailty_Level) %>% 
+  ggplot(aes(x = deprivation, y = prop, fill = `Frailty category`)) +
+  geom_col(position = "fill") +
+  geom_text(
+    mapping = aes(label = prop, vjust = -0.75, fontface = "bold"),
+    stat = "identity",
+    position = "fill",
+    #    nudge_y = 0.5,
+    color = "orangered2",
+    check_overlap = T) +
+  facet_wrap(~ASC) +
+  scale_fill_viridis_d(option = "D") +
+  labs(y = "%") +
+  theme_bw() +
+  theme(axis.text = element_text(size = 12),
+        axis.title.x = element_text(size = 12, face = "bold"),
+        axis.text.y = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 12),
+        legend.title = element_blank(),
+        strip.text = element_text(size = 12)
+  )
+
+  
+```
+
+***
+
+### d)	Reasons for Shielding
+
+Analysis of reasons for shielding shows 
+
+* A greater proportion of people on the CEV list and supported by Adult Social Care had severe or moderate Frailty compared to people not receiving adult social care support
+
+* Greater variation in the reasons for shielding with a Frailty category of fit and not supported by Adult social care.
+
+```{r resp8, eval=T, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height=8, fig.width=13}
+
+rename(ASC_Frailty_RfS, 
+       `Frailty category` = Frailty_Level,
+       `Reason for Shielding` = RfS) %>% 
+  mutate(ASC = if_else(ASC == "Known to ASC", "ASC support", "No ASC support")) %>%
+  ggplot(aes(x = `Frailty category`, y = number.patients, fill = `Reason for Shielding`)) +
+  geom_col(position = "stack") +
+  scale_fill_viridis_d() +
+  coord_flip() +
+  facet_wrap(~ASC, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 12, face = "bold"),
+        legend.position = "bottom",
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12, face = "bold"),
+        strip.text = element_text(size = 12)
+        )
+  
+  
+  
+```
+
+***
