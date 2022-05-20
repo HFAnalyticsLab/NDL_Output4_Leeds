@@ -4,7 +4,7 @@
 
 The Leeds Data Model (LDM) was used to link the CEV cohort with their Frailty category and whether they have received support from Leeds City Council Adult Social Care (ASC) services. This descriptive analysis provides further intelligence on the complexity of care needed in the CEV cohort.
 
-#### Project Status: In progess
+#### Project Status: Completed
 
 ## Project Description
 
